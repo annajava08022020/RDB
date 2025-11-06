@@ -1,0 +1,113 @@
+-- Table of Persons
+CREATE TABLE IF NOT EXISTS Person (
+    PersonID SERIAL PRIMARY KEY,
+    FullName VARCHAR(100) NOT NULL,
+    Email VARCHAR(100),
+    Phone VARCHAR(20)
+);
+
+-- Table of Investors
+CREATE TABLE IF NOT EXISTS Investor (
+    InvestorID INT PRIMARY KEY REFERENCES Person(PersonID)
+);
+
+-- Table of Fund Managers
+CREATE TABLE IF NOT EXISTS FundManager (
+    ManagerID INT PRIMARY KEY REFERENCES Person(PersonID),
+    ExperienceYears INT
+);
+
+-- Table of Fund Types
+CREATE TABLE IF NOT EXISTS FundType (
+    FundTypeID SERIAL PRIMARY KEY,
+    TypeName VARCHAR(50) NOT NULL UNIQUE,
+    Description TEXT
+);
+
+-- Table of Funds
+CREATE TABLE IF NOT EXISTS Fund (
+    FundID SERIAL PRIMARY KEY,
+    FundName VARCHAR(100) NOT NULL,
+    FundTypeID INT NOT NULL REFERENCES FundType(FundTypeID),
+    ManagerID INT NOT NULL REFERENCES FundManager(ManagerID)
+);
+
+-- Table of Investments
+CREATE TABLE IF NOT EXISTS Investment (
+    InvestmentID SERIAL PRIMARY KEY,
+    InvestorID INT NOT NULL REFERENCES Investor(InvestorID),
+    FundID INT NOT NULL REFERENCES Fund(FundID),
+    Amount DECIMAL(15,2) NOT NULL CHECK (Amount > 0),
+    InvestmentDate DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+-- Table of Stock Exchanges
+CREATE TABLE IF NOT EXISTS StockExchange (
+    ExchangeID SERIAL PRIMARY KEY,
+    ExchangeCode VARCHAR(10) UNIQUE NOT NULL,
+    ExchangeName VARCHAR(50) NOT NULL
+);
+
+-- Table of Companies
+CREATE TABLE IF NOT EXISTS Company (
+    CompanyID SERIAL PRIMARY KEY,
+    CompanyName VARCHAR(100) NOT NULL,
+    LegalName VARCHAR(200)
+);
+
+-- Table of Stocks
+CREATE TABLE IF NOT EXISTS Stock (
+    StockID SERIAL PRIMARY KEY,
+    StockShortName VARCHAR(10) NOT NULL,
+    CompanyID INT NOT NULL REFERENCES Company(CompanyID),
+    ExchangeID INT NOT NULL REFERENCES StockExchange(ExchangeID),
+	CONSTRAINT unique_ticker_exchange UNIQUE (StockShortName, ExchangeID)
+);
+
+-- Table of Transaction Types
+CREATE TABLE IF NOT EXISTS TransactionType (
+    TypeID SERIAL PRIMARY KEY,
+    TypeCode VARCHAR(10) UNIQUE NOT NULL,
+    TypeName VARCHAR(50) NOT NULL,
+    Description TEXT
+);
+
+-- Table of Stock Transactions
+CREATE TABLE IF NOT EXISTS StockTransaction (
+    TransactionID SERIAL PRIMARY KEY,
+    InvestmentID INT NOT NULL REFERENCES Investment(InvestmentID),
+    StockID INT NOT NULL REFERENCES Stock(StockID),
+    TransactionTypeID INT NOT NULL REFERENCES TransactionType(TypeID),
+    TransactionDate DATE NOT NULL,
+    StockQuantity INT NOT NULL,
+    Price DECIMAL(10,2) NOT NULL CHECK (Price > 0)
+);
+
+-- Table of Fund Stocks (Junction Table)
+CREATE TABLE IF NOT EXISTS FundStock (
+    FundID INT NOT NULL REFERENCES Fund(FundID),
+    StockID INT NOT NULL REFERENCES Stock(StockID),
+    StockQuantity INT NOT NULL CHECK (StockQuantity >= 0),
+    AveragePurchasePrice DECIMAL(10,2),
+	PRIMARY KEY (FundID, StockID)
+);
+
+-- Table of Dividends
+CREATE TABLE IF NOT EXISTS Dividend (
+    DividendID SERIAL PRIMARY KEY,
+    StockID INT NOT NULL REFERENCES Stock(StockID),
+    DividendDate DATE NOT NULL,
+    DividendAmount DECIMAL(10,4) NOT NULL CHECK (DividendAmount >= 0)
+);
+
+-- Table of Market Prices
+CREATE TABLE IF NOT EXISTS MarketPrice (
+    StockID INT NOT NULL REFERENCES Stock(StockID),
+    PriceDate DATE NOT NULL,
+    ClosingPrice DECIMAL(10,2) NOT NULL CHECK (ClosingPrice > 0),
+    PRIMARY KEY (StockID, PriceDate)
+);
+
+-- Add Default value for transaction date to current date
+ALTER TABLE StockTransaction ALTER COLUMN TransactionDate 
+    SET DEFAULT CURRENT_DATE;
